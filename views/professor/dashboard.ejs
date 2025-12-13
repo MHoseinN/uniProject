@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پورتال استاد</title>
+</head>
+<body>
+    <div class="container">
+        <div class="navbar">
+            <h1>پورتال استاد</h1>
+            <div>
+                <span>خوش آمدید، <%= user.firstName %> <%= user.lastName %></span>
+                <a href="/logout" style="margin-right: 20px;">خروج</a>
+            </div>
+        </div>
+        
+        <div id="alertBox" class="alert"></div>
+        
+        <!-- بخش استاد راهنما -->
+        <div class="card">
+            <h2>استاد راهنما - دانشجویان تحت سرپرستی</h2>
+            
+            <% if (supervisedProjects && supervisedProjects.length > 0) { %>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>شماره دانشجویی</th>
+                            <th>نام دانشجو</th>
+                            <th>موضوع</th>
+                            <th>وضعیت</th>
+                            <th>عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% supervisedProjects.forEach(project => { %>
+                            <tr>
+                                <td><%= project.student.studentNumber %></td>
+                                <td><%= project.student.firstName %> <%= project.student.lastName %></td>
+                                <td><%= project.topic || '-' %></td>
+                                <td>
+                                    <span class="status-badge status-<%= project.status %>">
+                                        <%= project.status === 'topic_proposal' ? 'در انتظار انتخاب موضوع' : 
+                                            project.status === 'in_progress' ? 'در حال انجام' : 
+                                            project.status === 'defense_scheduled' ? 'زمان دفاعیه تعیین شده' : 
+                                            'تکمیل شده' %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <% if (project.status === 'topic_proposal') { %>
+                                        <button class="btn btn-sm" onclick="viewTopics('<%= project._id %>')">مشاهده موضوعات</button>
+                                    <% } %>
+                                    <% if (project.status === 'in_progress') { %>
+                                        <button class="btn btn-sm btn-secondary" onclick="viewReports('<%= project._id %>')">مشاهده گزارش‌ها</button>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            <% } else { %>
+                <p>در حال حاضر دانشجویی تحت سرپرستی شما نیست.</p>
+            <% } %>
+        </div>
+        
+        <!-- بخش استاد داور -->
+        <div class="card">
+            <h2>استاد داور - دانشجویان تحت نظارت</h2>
+            
+            <% if (examinedProjects && examinedProjects.length > 0) { %>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>شماره دانشجویی</th>
+                            <th>نام دانشجو</th>
+                            <th>موضوع</th>
+                            <th>استاد راهنما</th>
+                            <th>وضعیت</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% examinedProjects.forEach(project => { %>
+                            <tr>
+                                <td><%= project.student.studentNumber %></td>
+                                <td><%= project.student.firstName %> <%= project.student.lastName %></td>
+                                <td><%= project.topic || '-' %></td>
+                                <td><%= project.supervisor ? project.supervisor.firstName + ' ' + project.supervisor.lastName : '-' %></td>
+                                <td>
+                                    <span class="status-badge status-<%= project.status %>">
+                                        <%= project.status === 'in_progress' ? 'در حال انجام' : 
+                                            project.status === 'defense_scheduled' ? 'زمان دفاعیه تعیین شده' : 
+                                            'تکمیل شده' %>
+                                    </span>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            <% } else { %>
+                <p>در حال حاضر دانشجویی برای داوری به شما اختصاص نیافته است.</p>
+            <% } %>
+            
+            <h3 style="margin-top: 30px;">پیشنهاد زمان دفاعیه</h3>
+            <p>زمان‌های خالی خود را برای برگزاری جلسات دفاعیه مشخص کنید.</p>
+            
+            <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>تاریخ:</label>
+                    <input type="date" id="defenseDate" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                </div>
+                <div class="form-group">
+                    <label>ساعت شروع:</label>
+                    <input type="time" id="startTime" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                </div>
+                <div class="form-group">
+                    <label>ساعت پایان:</label>
+                    <input type="time" id="endTime" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                </div>
+            </div>
+            <button class="btn" onclick="proposeDefenseTime()">ثبت زمان پیشنهادی</button>
+        </div>
+        
+        <!-- Modal برای نمایش موضوعات -->
+        <div id="topicsModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h3>موضوعات پیشنهادی دانشجو</h3>
+                <div id="topicsList"></div>
+            </div>
+        </div>
+        
+        <!-- Modal برای نمایش گزارش‌ها -->
+        <div id="reportsModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close" onclick="closeReportsModal()">&times;</span>
+                <h3>گزارش‌های دانشجو</h3>
+                <div id="reportsList"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentProjectId = null;
+        
+        function showAlert(message, type) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.textContent = message;
+            alertBox.className = `alert alert-${type}`;
+            alertBox.style.display = 'block';
+            
+            setTimeout(() => {
+                alertBox.style.display = 'none';
+            }, 5000);
+        }
+        
+        async function viewTopics(projectId) {
+            try {
+                const response = await fetch(`/professor/proposed-topics/${projectId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentProjectId = projectId;
+                    const topicsList = document.getElementById('topicsList');
+                    topicsList.innerHTML = `
+                        <p><strong>دانشجو:</strong> ${result.student.firstName} ${result.student.lastName}</p>
+                        <div style="margin-top: 20px;">
+                            ${result.proposedTopics.map((topic, index) => `
+                                <div style="border: 1px solid #e0e0e0; padding: 15px; margin-bottom: 10px; border-radius: 8px;">
+                                    <p><strong>موضوع ${index + 1}:</strong> ${topic.topic}</p>
+                                    <button class="btn btn-success" style="margin-top: 10px;" onclick="approveTopic(${index})">تایید این موضوع</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    document.getElementById('topicsModal').style.display = 'block';
+                } else {
+                    showAlert(result.message, 'error');
+                }
+            } catch (error) {
+                showAlert('خطا در دریافت موضوعات', 'error');
+            }
+        }
+        
+        async function approveTopic(topicIndex) {
+            try {
+                const response = await fetch('/professor/approve-topic', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ projectId: currentProjectId, topicIndex })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    closeModal();
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showAlert(result.message, 'error');
+                }
+            } catch (error) {
+                showAlert('خطا در تایید موضوع', 'error');
+            }
+        }
+        
+        async function viewReports(projectId) {
+            try {
+                const response = await fetch(`/professor/reports/${projectId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const reportsList = document.getElementById('reportsList');
+                    reportsList.innerHTML = `
+                        <p><strong>دانشجو:</strong> ${result.student.firstName} ${result.student.lastName}</p>
+                        <div style="margin-top: 20px;">
+                            ${result.reports.map((report, index) => `
+                                <div style="border: 1px solid #e0e0e0; padding: 15px; margin-bottom: 10px; border-radius: 8px;">
+                                    <p><strong>گزارش ${index + 1}</strong> - ${new Date(report.submittedAt).toLocaleDateString('fa-IR')}</p>
+                                    <p style="margin-top: 10px;">${report.content}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    document.getElementById('reportsModal').style.display = 'block';
+                } else {
+                    showAlert(result.message, 'error');
+                }
+            } catch (error) {
+                showAlert('خطا در دریافت گزارش‌ها', 'error');
+            }
+        }
+        
+        async function proposeDefenseTime() {
+            const date = document.getElementById('defenseDate').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            
+            if (!date || !startTime || !endTime) {
+                showAlert('لطفاً تمام فیلدها را پر کنید', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/professor/propose-defense-time', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date, startTime, endTime })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    document.getElementById('defenseDate').value = '';
+                    document.getElementById('startTime').value = '';
+                    document.getElementById('endTime').value = '';
+                } else {
+                    showAlert(result.message, 'error');
+                }
+            } catch (error) {
+                showAlert('خطا در ثبت زمان', 'error');
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('topicsModal').style.display = 'none';
+        }
+        
+        function closeReportsModal() {
+            document.getElementById('reportsModal').style.display = 'none';
+        }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .navbar h1 {
+            color: #667eea;
+            font-size: 24px;
+        }
+        
+        .navbar a {
+            color: #667eea;
+            text-decoration: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        
+        .navbar a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .card h2, .card h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #764ba2;
+        }
+        
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            margin-right: 10px;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status-topic_proposal {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status-in_progress {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-defense_scheduled {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .close {
+            color: #aaa;
+            float: left;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+    </style>
+</body>
+</html>

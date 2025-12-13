@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پورتال مدیر گروه</title>
+</head>
+<body>
+    <div class="container">
+        <div class="navbar">
+            <h1>پورتال مدیر گروه</h1>
+            <div>
+                <span>خوش آمدید، <%= user.firstName %> <%= user.lastName %> - رشته <%= user.major %></span>
+                <a href="/logout" style="margin-right: 20px;">خروج</a>
+            </div>
+        </div>
+        
+        <div id="alertBox" class="alert"></div>
+        
+        <!-- درخواست‌های در انتظار تایید -->
+        <div class="card">
+            <h2>درخواست‌های پروژه در انتظار تایید</h2>
+            
+            <% if (pendingProjects && pendingProjects.length > 0) { %>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>کد پروژه</th>
+                            <th>شماره دانشجویی</th>
+                            <th>نام دانشجو</th>
+                            <th>رشته</th>
+                            <th>عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% pendingProjects.forEach(project => { %>
+                            <tr>
+                                <td><%= project.projectCode %></td>
+                                <td><%= project.student.studentNumber %></td>
+                                <td><%= project.student.firstName %> <%= project.student.lastName %></td>
+                                <td><%= project.student.major %></td>
+                                <td>
+                                    <button class="btn btn-success btn-sm" onclick="openApproveModal('<%= project._id %>')">تایید و انتخاب اساتید</button>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            <% } else { %>
+                <p>در حال حاضر درخواستی در انتظار تایید نیست.</p>
+            <% } %>
+        </div>
+        
+        <!-- تمام پروژه‌ها -->
+        <div class="card">
+            <h2>لیست تمام پروژه‌ها</h2>
+            
+            <% if (allProjects && allProjects.length > 0) { %>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>کد پروژه</th>
+                            <th>دانشجو</th>
+                            <th>موضوع</th>
+                            <th>استاد راهنما</th>
+                            <th>استاد داور</th>
+                            <th>وضعیت</th>
+                            <th>تاریخ دفاعیه</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% allProjects.forEach(project => { %>
+                            <tr>
+                                <td><%= project.projectCode %></td>
+                                <td><%= project.student.firstName %> <%= project.student.lastName %></td>
+                                <td><%= project.topic || '-' %></td>
+                                <td><%= project.supervisor ? project.supervisor.firstName + ' ' + project.supervisor.lastName : '-' %></td>
+                                <td><%= project.examiner ? project.examiner.firstName + ' ' + project.examiner.lastName : '-' %></td>
+                                <td>
+                                    <span class="status-badge status-<%= project.status %>">
+                                        <%= project.status === 'pending' ? 'در انتظار' : 
+                                            project.status === 'topic_proposal' ? 'پیشنهاد موضوع' : 
+                                            project.status === 'in_progress' ? 'در حال انجام' : 
+                                            project.status === 'defense_scheduled' ? 'زمان دفاعیه تعیین شده' : 
+                                            'تکمیل شده' %>
+                                    </span>
+                                </td>
+                                <td><%= project.defenseDate ? new Date(project.defenseDate).toLocaleDateString('fa-IR') + ' ' + project.defenseTime : '-' %></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            <% } else { %>
+                <p>در حال حاضر پروژه‌ای ثبت نشده است.</p>
+            <% } %>
+        </div>
+        
+        <!-- زمان‌های پیشنهادی برای دفاعیه -->
+        <div class="card">
+            <h2>زمان‌های پیشنهادی دفاعیه</h2>
+            
+            <% if (proposedTimeSlots && proposedTimeSlots.length > 0) { %>
+                <form id="timeSlotsForm">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">انتخاب</th>
+                                <th>استاد داور</th>
+                                <th>تاریخ</th>
+                                <th>ساعت شروع</th>
+                                <th>ساعت پایان</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% proposedTimeSlots.forEach(slot => { %>
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" name="timeSlots" value="<%= slot._id %>" style="width: 20px; height: 20px;">
+                                    </td>
+                                    <td><%= slot.professor.firstName %> <%= slot.professor.lastName %></td>
+                                    <td><%= new Date(slot.date).toLocaleDateString('fa-IR') %></td>
+                                    <td><%= slot.startTime %></td>
+                                    <td><%= slot.endTime %></td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                    <button type="button" class="btn" onclick="approveDefenseTimes()">تایید زمان‌های انتخاب شده</button>
+                </form>
+            <% } else { %>
+                <p>در حال حاضر زمانی پیشنهاد نشده است.</p>
+            <% } %>
+        </div>
+        
+        <!-- Modal برای انتخاب اساتید -->
+        <div id="approveModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close" onclick="closeApproveModal()">&times;</span>
+                <h3>انتخاب استاد راهنما و داور</h3>
+                
+                <div class="form-group">
+                    <label>استاد راهنما:</label>
+                    <select id="supervisorSelect" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                        <option value="">انتخاب کنید...</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>استاد داور:</label>
+                    <select id="examinerSelect" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                        <option value="">انتخاب کنید...</option>
+                    </select>
+                </div>
+                
+                <button class="btn" onclick="approveProject()">تایید و ثبت</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentProjectId = null;
+        let professors = [];
+        
+        async function loadProfessors() {
+            try {
+                const response = await fetch('/manager/professors');
+                const result = await response.json();
+                
+                if (result.success) {
+                    professors = result.professors;
+                }
+            } catch (error) {
+                console.error('خطا در دریافت لیست اساتید');
+            }
+        }
+        
+        loadProfessors();
+        
+        function showAlert(message, type) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.textContent = message;
+            alertBox.className = `alert alert-${type}`;
+            alertBox.style.display = 'block';
+            
+            setTimeout(() => {
+                alertBox.style.display = 'none';
+            }, 5000);
+        }
+        
+        function openApproveModal(projectId) {
+            currentProjectId = projectId;
+            
+            const supervisorSelect = document.getElementById('supervisorSelect');
+            const examinerSelect = document.getElementById('examinerSelect');
+            
+            supervisorSelect.innerHTML = '<option value="">انتخاب کنید...</option>';
+            examinerSelect.innerHTML = '<option value="">انتخاب کنید...</option>';
+            
+            professors.forEach(prof => {
+                supervisorSelect.innerHTML += `<option value="${prof._id}">${prof.firstName} ${prof.lastName}</option>`;
+                examinerSelect.innerHTML += `<option value="${prof._id}">${prof.firstName} ${prof.lastName}</option>`;
+            });
+            
+            document.getElementById('approveModal').style.display = 'block';
+        }
+        
+        function closeApproveModal() {
+            document.getElementById('approveModal').style.display = 'none';
+        }
+        
+        async function approveProject() {
+            const supervisorId = document.getElementById('supervisorSelect').value;
+            const examinerId = document.getElementById('examinerSelect').value;
+            
+            if (!supervisorId || !examinerId) {
+                showAlert('لطفاً هر دو استاد را انتخاب کنید', 'error');
+                return;
+            }
+            
+            if (supervisorId === examinerId) {
+                showAlert('استاد راهنما و استاد داور نمی‌توانند یک نفر باشند', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/manager/approve-project', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        projectId: currentProjectId, 
+                        supervisorId, 
+                        examinerId 
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    closeApproveModal();
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showAlert(result.message, 'error');
+                }
+            } catch (error) {
+                showAlert('خطا در تایید پروژه', 'error');
+            }
+        }
+        
+        async function approveDefenseTimes() {
+            const checkboxes = document.querySelectorAll('input[name="timeSlots"]:checked');
+            const timeSlotIds = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (timeSlotIds.length === 0) {
+                showAlert('لطفاً حداقل یک زمان را انتخاب کنید', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/manager/approve-defense-times', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ timeSlotIds })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showAlert(result.message, 'error');
+                }
+            } catch (error) {
+                showAlert('خطا در تایید زمان‌ها', 'error');
+            }
+        }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .navbar h1 {
+            color: #667eea;
+            font-size: 24px;
+        }
+        
+        .navbar a {
+            color: #667eea;
+            text-decoration: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        
+        .navbar a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .card h2, .card h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #764ba2;
+        }
+        
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-topic_proposal {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status-in_progress {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-defense_scheduled {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 600px;
+        }
+        
+        .close {
+            color: #aaa;
+            float: left;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+    </style>
+</body>
+</html>

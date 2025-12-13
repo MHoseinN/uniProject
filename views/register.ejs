@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ثبت نام</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            direction: rtl;
+            padding: 20px;
+        }
+        
+        .register-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        h2 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .role-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .role-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+        
+        .role-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            width: 100%;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            background: #764ba2;
+        }
+        
+        .link {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+        }
+        
+        .link a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <h2>ثبت نام</h2>
+        
+        <div id="alertBox" class="alert"></div>
+        
+        <div class="role-selector">
+            <button class="role-btn active" onclick="selectRole('student')">دانشجو</button>
+            <button class="role-btn" onclick="selectRole('professor')">استاد</button>
+            <button class="role-btn" onclick="selectRole('manager')">مدیر گروه</button>
+        </div>
+        
+        <!-- فرم دانشجو -->
+        <form id="studentForm">
+            <div class="form-group">
+                <label>نام *</label>
+                <input type="text" name="firstName" required>
+            </div>
+            <div class="form-group">
+                <label>نام خانوادگی *</label>
+                <input type="text" name="lastName" required>
+            </div>
+            <div class="form-group">
+                <label>شماره دانشجویی *</label>
+                <input type="text" name="studentNumber" required>
+            </div>
+            <div class="form-group">
+                <label>کد ملی * (10 رقم)</label>
+                <input type="text" name="nationalCode" pattern="[0-9]{10}" required>
+            </div>
+            <div class="form-group">
+                <label>رشته تحصیلی *</label>
+                <input type="text" name="major" required>
+            </div>
+            <button type="submit" class="btn">ثبت نام</button>
+        </form>
+        
+        <!-- فرم استاد -->
+        <form id="professorForm" class="hidden">
+            <div class="form-group">
+                <label>نام *</label>
+                <input type="text" name="firstName" required>
+            </div>
+            <div class="form-group">
+                <label>نام خانوادگی *</label>
+                <input type="text" name="lastName" required>
+            </div>
+            <div class="form-group">
+                <label>شماره شناسایی استادی *</label>
+                <input type="text" name="professorId" required>
+            </div>
+            <div class="form-group">
+                <label>کد ملی * (10 رقم)</label>
+                <input type="text" name="nationalCode" pattern="[0-9]{10}" required>
+            </div>
+            <div class="form-group">
+                <label>رشته تحصیلی *</label>
+                <input type="text" name="major" required>
+            </div>
+            <button type="submit" class="btn">ثبت نام</button>
+        </form>
+        
+        <!-- فرم مدیر گروه -->
+        <form id="managerForm" class="hidden">
+            <div class="form-group">
+                <label>نام *</label>
+                <input type="text" name="firstName" required>
+            </div>
+            <div class="form-group">
+                <label>نام خانوادگی *</label>
+                <input type="text" name="lastName" required>
+            </div>
+            <div class="form-group">
+                <label>شماره شناسایی مدیرگروه *</label>
+                <input type="text" name="managerId" required>
+            </div>
+            <div class="form-group">
+                <label>کد ملی * (10 رقم)</label>
+                <input type="text" name="nationalCode" pattern="[0-9]{10}" required>
+            </div>
+            <div class="form-group">
+                <label>رشته تحصیلی *</label>
+                <input type="text" name="major" required>
+            </div>
+            <button type="submit" class="btn">ثبت نام</button>
+        </form>
+        
+        <div class="link">
+            قبلا ثبت نام کرده‌اید؟ <a href="/login">ورود</a>
+        </div>
+    </div>
+    
+    <script>
+        let currentRole = 'student';
+        
+        function selectRole(role) {
+            currentRole = role;
+            
+            // به‌روزرسانی دکمه‌های انتخاب نقش
+            document.querySelectorAll('.role-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // نمایش فرم مربوطه
+            document.getElementById('studentForm').classList.add('hidden');
+            document.getElementById('professorForm').classList.add('hidden');
+            document.getElementById('managerForm').classList.add('hidden');
+            document.getElementById(role + 'Form').classList.remove('hidden');
+        }
+        
+        function showAlert(message, type) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.textContent = message;
+            alertBox.className = `alert ${type}`;
+            
+            setTimeout(() => {
+                alertBox.className = 'alert';
+            }, 5000);
+        }
+        
+        async function handleSubmit(e, role) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            
+            try {
+                const response = await fetch(`/register/${role}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else {
+                    showAlert(result.message, 'error');
+                }
+            } catch (error) {
+                showAlert('خطا در ارتباط با سرور', 'error');
+            }
+        }
+        
+        document.getElementById('studentForm').addEventListener('submit', (e) => handleSubmit(e, 'student'));
+        document.getElementById('professorForm').addEventListener('submit', (e) => handleSubmit(e, 'professor'));
+        document.getElementById('managerForm').addEventListener('submit', (e) => handleSubmit(e, 'manager'));
+    </script>
+</body>
+</html>
