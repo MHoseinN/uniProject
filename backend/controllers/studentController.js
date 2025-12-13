@@ -13,13 +13,22 @@ exports.getDashboard = async (req, res) => {
       .populate('examiner')
       .populate('manager');
     
-    res.render('student/dashboard', { 
-      user: req.session.user,
-      student,
-      project 
-    });
+    // بررسی اینکه درخواست از Vue.js است یا EJS
+    if (req.headers.accept && req.headers.accept.includes('application/json')) {
+      res.json({ 
+        success: true,
+        student,
+        project 
+      });
+    } else {
+      res.render('student/dashboard', { 
+        user: req.session.user,
+        student,
+        project 
+      });
+    }
   } catch (error) {
-    res.status(500).send(error.message);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

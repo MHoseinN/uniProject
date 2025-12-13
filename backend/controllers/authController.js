@@ -153,7 +153,8 @@ exports.loginStudent = async (req, res) => {
     
     res.json({ 
       success: true, 
-      redirect: '/student/dashboard' 
+      redirect: '/student/dashboard',
+      user: req.session.user
     });
   } catch (error) {
     res.status(500).json({ 
@@ -187,7 +188,8 @@ exports.loginProfessor = async (req, res) => {
     
     res.json({ 
       success: true, 
-      redirect: '/professor/dashboard' 
+      redirect: '/professor/dashboard',
+      user: req.session.user
     });
   } catch (error) {
     res.status(500).json({ 
@@ -221,7 +223,8 @@ exports.loginManager = async (req, res) => {
     
     res.json({ 
       success: true, 
-      redirect: '/manager/dashboard' 
+      redirect: '/manager/dashboard',
+      user: req.session.user
     });
   } catch (error) {
     res.status(500).json({ 

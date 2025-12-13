@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
+const cors = require('cors');
 const path = require('path');
 const connectDB = require('./config/database');
 
@@ -10,6 +11,12 @@ const app = express();
 
 // اتصال به دیتابیس
 connectDB();
+
+// تنظیم CORS
+app.use(cors({
+  origin: 'http://localhost:5173', // آدرس Vite dev server
+  credentials: true
+}));
 
 // تنظیمات middleware
 app.use(express.json());

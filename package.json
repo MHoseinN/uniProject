@@ -1,27 +1,30 @@
 {
-  "name": "uni-project-management",
+  "name": "university-project-management-system",
   "version": "1.0.0",
-  "description": "سیستم مدیریت پروژه‌های دانشجویی",
-  "main": "server.js",
+  "description": "سیستم مدیریت جامع پروژه‌های دانشجویی با Backend (Node.js/Express) و Frontend (Vue.js)",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "install-all": "npm install --prefix backend && npm install --prefix frontend",
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "backend": "npm run dev --prefix backend",
+    "frontend": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "start": "npm start --prefix backend"
   },
-  "keywords": ["express", "mongodb", "university", "project-management"],
+  "keywords": [
+    "university",
+    "project-management",
+    "student",
+    "vue",
+    "express",
+    "mongodb"
+  ],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^8.0.0",
-    "dotenv": "^16.3.1",
-    "bcryptjs": "^2.4.3",
-    "express-session": "^1.17.3",
-    "connect-mongo": "^5.1.0",
-    "ejs": "^3.1.9",
-    "express-validator": "^7.0.1",
-    "multer": "^1.4.5-lts.1"
-  },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "mongoose": "^9.0.1"
   }
 }
