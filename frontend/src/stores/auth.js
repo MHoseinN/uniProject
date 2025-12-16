@@ -1,61 +1,86 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import { ref, computed } from 'vue'
+import api from '../services/api'
+import router from '../router'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+export const useAuthStore = defineStore('auth', () => {
+  const token = ref(null)
+  const user = ref(null)
+  const loading = ref(false)
+  const error = ref(null)
 
-export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    user: JSON.parse(localStorage.getItem('user') || 'null'),
-    loading: false,
-    error: null
-  }),
+  const isAuthenticated = computed(() => !!token.value)
+  const userRole = computed(() => user.value?.role || null)
 
-  getters: {
-    isAuthenticated: (state) => !!state.user,
-    userRole: (state) => state.user?.role || null
-  },
-
-  actions: {
-    async register(role, userData) {
-      this.loading = true
-      this.error = null
-      
-      try {
-        const response = await axios.post(`${API_URL}/register/${role}`, userData)
-        return response.data
-      } catch (error) {
-        this.error = error.response?.data?.message || 'خطا در ثبت نام'
-        throw error
-      } finally {
-        this.loading = false
+  async function login(credentials) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post('/auth/login', credentials)
+      if (response.data.success) {
+        token.value = response.data.token
+        user.value = response.data.user
+        api.setAuthToken(response.data.token)
+        return true
       }
-    },
-
-    async login(role, credentials) {
-      this.loading = true
-      this.error = null
-      
-      try {
-        const response = await axios.post(`${API_URL}/login/${role}`, credentials)
-        
-        if (response.data.success) {
-          this.user = response.data.user || { role }
-          localStorage.setItem('user', JSON.stringify(this.user))
-        }
-        
-        return response.data
-      } catch (error) {
-        this.error = error.response?.data?.message || 'خطا در ورود'
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    logout() {
-      this.user = null
-      localStorage.removeItem('user')
-      axios.get(`${API_URL}/logout`)
+    } catch (err) {
+      error.value = err.response?.data?.message || 'خطا در ورود'
+      return false
+    } finally {
+      loading.value = false
     }
+  }
+
+  async function register(userData) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post('/auth/register', userData)
+      if (response.data.success) {
+        return { success: true, message: response.data.message }
+      }
+    } catch (err) {
+      error.value = err.response?.data?.message || 'خطا در ثبت‌نام'
+      return { success: false, message: error.value }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchProfile() {
+    if (!token.value) return
+    try {
+      const response = await api.get('/auth/profile')
+      if (response.data.success) {
+        user.value = response.data.user
+      }
+    } catch (err) {
+      console.error('Failed to fetch profile:', err)
+      logout()
+    }
+  }
+
+  function logout() {
+    token.value = null
+    user.value = null
+    api.setAuthToken(null)
+    router.push('/login')
+  }
+
+  return {
+    token,
+    user,
+    loading,
+    error,
+    isAuthenticated,
+    userRole,
+    login,
+    register,
+    fetchProfile,
+    logout
+  }
+}, {
+  persist: {
+    paths: ['token', 'user']
   }
 })

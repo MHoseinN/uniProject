@@ -1,3 +1,160 @@
+#!/bin/bash
+
+# Frontend Production Setup Script
+# This script creates all necessary files for the Vue.js frontend
+
+cd "$(dirname "$0")"
+
+echo "🚀 Setting up Production Frontend..."
+
+# Create all required files with content
+
+echo "Creating stores..."
+cat > src/stores/auth.js << 'STOREFILE'
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import api from '../services/api'
+import router from '../router'
+
+export const useAuthStore = defineStore('auth', () => {
+  const token = ref(null)
+  const user = ref(null)
+  const loading = ref(false)
+  const error = ref(null)
+
+  const isAuthenticated = computed(() => !!token.value)
+  const userRole = computed(() => user.value?.role || null)
+
+  async function login(credentials) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post('/auth/login', credentials)
+      if (response.data.success) {
+        token.value = response.data.token
+        user.value = response.data.user
+        api.setAuthToken(response.data.token)
+        return true
+      }
+    } catch (err) {
+      error.value = err.response?.data?.message || 'خطا در ورود'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function register(userData) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post('/auth/register', userData)
+      if (response.data.success) {
+        return { success: true, message: response.data.message }
+      }
+    } catch (err) {
+      error.value = err.response?.data?.message || 'خطا در ثبت‌نام'
+      return { success: false, message: error.value }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchProfile() {
+    if (!token.value) return
+    try {
+      const response = await api.get('/auth/profile')
+      if (response.data.success) {
+        user.value = response.data.user
+      }
+    } catch (err) {
+      console.error('Failed to fetch profile:', err)
+      logout()
+    }
+  }
+
+  function logout() {
+    token.value = null
+    user.value = null
+    api.setAuthToken(null)
+    router.push('/login')
+  }
+
+  return {
+    token,
+    user,
+    loading,
+    error,
+    isAuthenticated,
+    userRole,
+    login,
+    register,
+    fetchProfile,
+    logout
+  }
+}, {
+  persist: {
+    paths: ['token', 'user']
+  }
+})
+STOREFILE
+
+echo "Creating API service..."
+cat > src/services/api.js << 'APIFILE'
+import axios from 'axios'
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// Request interceptor
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth')
+    if (token) {
+      try {
+        const authData = JSON.parse(token)
+        if (authData.token) {
+          config.headers.Authorization = `Bearer ${authData.token}`
+        }
+      } catch (e) {
+        console.error('Error parsing auth token:', e)
+      }
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
+// Response interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('auth')
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
+// Helper function to set auth token
+api.setAuthToken = (token) => {
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  } else {
+    delete api.defaults.headers.common['Authorization']
+  }
+}
+
+export default api
+APIFILE
+
+echo "Creating router..."
+cat > src/router/index.js << 'ROUTERFILE'
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
@@ -191,3 +348,17 @@ router.beforeEach((to, from, next) => {
 })
 
 export default router
+ROUTERFILE
+
+echo "✅ Frontend structure created successfully!"
+echo ""
+echo "📦 Next steps:"
+echo "1. Review generated files in src/"
+echo "2. Install dependencies: npm install"
+echo "3. Start dev server: npm run dev"
+echo "4. Access at: http://localhost:5173"
+STOREFILE
+
+chmod +x setup-frontend.sh
+
+echo "✅ Setup script created: setup-frontend.sh"
