@@ -1,28 +1,52 @@
 const express = require('express');
 const router = express.Router();
 const professorController = require('../controllers/professorController');
-const { isProfessor } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/jwt');
 
-// اعمال middleware برای تمام مسیرها
-router.use(isProfessor);
+/**
+ * @route   GET /api/professor/projects
+ * @desc    دریافت لیست پروژه‌های استاد (راهنما و داور)
+ * @access  Private - Professor
+ * @query   role: 'supervisor' | 'examiner' (اختیاری)
+ */
+router.get('/projects', authenticate, authorize('professor'), professorController.getProjects);
 
-// داشبورد استاد
-router.get('/dashboard', professorController.getDashboard);
+/**
+ * @route   GET /api/professor/projects/:projectId/proposed-topics
+ * @desc    مشاهده موضوعات پیشنهادی دانشجو
+ * @access  Private - Professor (Supervisor)
+ */
+router.get('/projects/:projectId/proposed-topics', authenticate, authorize('professor'), professorController.getProposedTopics);
 
-// مشاهده موضوعات پیشنهادی
-router.get('/proposed-topics/:projectId', professorController.getProposedTopics);
+/**
+ * @route   POST /api/professor/projects/:projectId/approve-topic
+ * @desc    تأیید موضوع پروژه
+ * @access  Private - Professor (Supervisor)
+ * @body    topicIndex: number
+ */
+router.post('/projects/:projectId/approve-topic', authenticate, authorize('professor'), professorController.approveTopic);
 
-// تایید موضوع
-router.post('/approve-topic', professorController.approveTopic);
+/**
+ * @route   POST /api/professor/projects/:projectId/defense-times
+ * @desc    ارسال زمان‌های پیشنهادی دفاع
+ * @access  Private - Professor (Examiner)
+ * @body    times: Array<{date, startTime, endTime}>
+ */
+router.post('/projects/:projectId/defense-times', authenticate, authorize('professor'), professorController.submitDefenseTimes);
 
-// مشاهده گزارشات
-router.get('/reports/:projectId', professorController.getReports);
+/**
+ * @route   POST /api/professor/projects/:projectId/grade
+ * @desc    ثبت نمره نهایی پروژه
+ * @access  Private - Professor (Examiner)
+ * @body    grade: number (0-20)
+ */
+router.post('/projects/:projectId/grade', authenticate, authorize('professor'), professorController.gradeProject);
 
-// پیشنهاد زمان دفاعیه
-router.post('/propose-defense-time', professorController.proposeDefenseTime);
-router.get('/proposed-times', professorController.getProposedTimes);
-
-// پیام‌ها
-router.post('/send-message', professorController.sendMessage);
+/**
+ * @route   GET /api/professor/projects/:projectId/reports
+ * @desc    مشاهده گزارش‌های پیشرفت دانشجو
+ * @access  Private - Professor (Supervisor/Examiner)
+ */
+router.get('/projects/:projectId/reports', authenticate, authorize('professor'), professorController.getProjectReports);
 
 module.exports = router;

@@ -1,7 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-const session = require('express-session');
-const MongoStore = require('connect-mongo');
 const cors = require('cors');
 const path = require('path');
 const connectDB = require('./config/database');
@@ -14,68 +12,91 @@ connectDB();
 
 // تنظیم CORS
 app.use(cors({
-  origin: 'http://localhost:5173', // آدرس Vite dev server
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true
 }));
 
 // تنظیمات middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
 
-// تنظیمات session
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI
-  }),
-  cookie: {
-    maxAge: 1000 * 60 * 60 * 24 // 24 ساعت
-  }
-}));
-
-// تنظیم view engine
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Import routes
 const authRoutes = require('./routes/auth');
 const studentRoutes = require('./routes/student');
 const professorRoutes = require('./routes/professor');
-const managerRoutes = require('./routes/manager');
+const headRoutes = require('./routes/headOfDepartment');
+const adminRoutes = require('./routes/admin');
+const messageRoutes = require('./routes/messages');
 
-// صفحه اصلی
+// صفحه اصلی (API Health Check)
 app.get('/', (req, res) => {
-  if (req.session.user) {
-    // اگر لاگین بود، به داشبورد مربوطه هدایت شود
-    const role = req.session.user.role;
-    return res.redirect(`/${role}/dashboard`);
-  }
-  res.render('index');
+  res.json({
+    success: true,
+    message: 'University Project Management API',
+    version: '2.0.0',
+    environment: process.env.NODE_ENV || 'development'
+  });
 });
 
-// استفاده از routes
-app.use('/', authRoutes);
-app.use('/student', studentRoutes);
-app.use('/professor', professorRoutes);
-app.use('/manager', managerRoutes);
+// استفاده از routes با prefix /api
+app.use('/api/auth', authRoutes);
+app.use('/api/student', studentRoutes);
+app.use('/api/professor', professorRoutes);
+app.use('/api/head', headRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/messages', messageRoutes);
 
 // مدیریت خطاها - 404
 app.use((req, res) => {
-  res.status(404).send('صفحه مورد نظر یافت نشد');
+  res.status(404).json({
+    success: false,
+    message: 'مسیر API مورد نظر یافت نشد'
+  });
 });
 
 // مدیریت خطاها - Server errors
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('خطای سرور');
+  console.error('خطای سرور:', err);
+  
+  // خطای validation
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      message: 'خطای اعتبارسنجی داده',
+      errors: err.errors
+    });
+  }
+  
+  // خطای JWT
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({
+      success: false,
+      message: 'توکن نامعتبر است'
+    });
+  }
+  
+  if (err.name === 'TokenExpiredError') {
+    return res.status(401).json({
+      success: false,
+      message: 'توکن منقضی شده است'
+    });
+  }
+  
+  // خطای عمومی
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'خطای سرور',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
 });
 
 // راه‌اندازی سرور
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`سرور روی پورت ${PORT} در حال اجرا است`);
-  console.log(`http://localhost:${PORT}`);
+  console.log(`✓ سرور در حال اجرا: http://localhost:${PORT}`);
+  console.log(`✓ محیط: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`✓ دیتابیس: ${process.env.MONGODB_URI ? 'متصل' : 'در حال اتصال...'}`);
 });

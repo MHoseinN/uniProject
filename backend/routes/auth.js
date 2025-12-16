@@ -1,24 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const { authenticate } = require('../middleware/jwt');
+const { validateRegister, validateLogin } = require('../validators');
 
-// صفحه ثبت نام
-router.get('/register', authController.getRegister);
+/**
+ * @route   POST /api/auth/register
+ * @desc    ثبت‌نام کاربر جدید (نیاز به تأیید admin)
+ * @access  Public
+ */
+router.post('/register', validateRegister, authController.register);
 
-// ثبت نام
-router.post('/register/student', authController.registerStudent);
-router.post('/register/professor', authController.registerProfessor);
-router.post('/register/manager', authController.registerManager);
+/**
+ * @route   POST /api/auth/login
+ * @desc    ورود کاربر و دریافت JWT
+ * @access  Public
+ */
+router.post('/login', validateLogin, authController.login);
 
-// صفحه ورود
-router.get('/login', authController.getLogin);
-
-// ورود
-router.post('/login/student', authController.loginStudent);
-router.post('/login/professor', authController.loginProfessor);
-router.post('/login/manager', authController.loginManager);
-
-// خروج
-router.get('/logout', authController.logout);
+/**
+ * @route   GET /api/auth/profile
+ * @desc    دریافت پروفایل کاربر احراز هویت شده
+ * @access  Private
+ */
+router.get('/profile', authenticate, authController.getProfile);
 
 module.exports = router;

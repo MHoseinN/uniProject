@@ -1,245 +1,181 @@
-const Student = require('../models/Student');
-const Professor = require('../models/Professor');
-const Manager = require('../models/Manager');
+const User = require('../models/User');
+const { generateToken } = require('../utils/jwt');
+const { logAction } = require('../utils/logger');
 
-// صفحه ثبت نام
-exports.getRegister = (req, res) => {
-  res.render('register');
-};
-
-// ثبت نام دانشجو
-exports.registerStudent = async (req, res) => {
+/**
+ * ثبت‌نام کاربر جدید (نیاز به تأیید ادمین)
+ * POST /auth/register
+ */
+async function register(req, res) {
   try {
-    const { firstName, lastName, studentNumber, nationalCode, major } = req.body;
+    const { firstName, lastName, nationalCode, password, role, major, studentNumber, professorId, managerId } = req.body;
     
-    // بررسی وجود قبلی
-    const existingStudent = await Student.findOne({ 
-      $or: [{ studentNumber }, { nationalCode }] 
-    });
-    
-    if (existingStudent) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'شماره دانشجویی یا کد ملی قبلا ثبت شده است' 
+    // بررسی تکراری بودن کد ملی
+    const existingUser = await User.findOne({ nationalCode });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'کاربری با این کد ملی قبلاً ثبت‌نام کرده است'
       });
     }
     
-    const student = new Student({
+    // ساخت کاربر جدید
+    const userData = {
       firstName,
       lastName,
-      studentNumber,
       nationalCode,
-      major
-    });
-    
-    await student.save();
-    
-    res.json({ 
-      success: true, 
-      message: 'ثبت نام با موفقیت انجام شد' 
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
-    });
-  }
-};
-
-// ثبت نام استاد
-exports.registerProfessor = async (req, res) => {
-  try {
-    const { firstName, lastName, professorId, nationalCode, major } = req.body;
-    
-    // بررسی وجود قبلی
-    const existingProfessor = await Professor.findOne({ 
-      $or: [{ professorId }, { nationalCode }] 
-    });
-    
-    if (existingProfessor) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'شماره شناسایی یا کد ملی قبلا ثبت شده است' 
-      });
-    }
-    
-    const professor = new Professor({
-      firstName,
-      lastName,
-      professorId,
-      nationalCode,
-      major
-    });
-    
-    await professor.save();
-    
-    res.json({ 
-      success: true, 
-      message: 'ثبت نام با موفقیت انجام شد' 
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
-    });
-  }
-};
-
-// ثبت نام مدیر گروه
-exports.registerManager = async (req, res) => {
-  try {
-    const { firstName, lastName, managerId, nationalCode, major } = req.body;
-    
-    // بررسی وجود قبلی
-    const existingManager = await Manager.findOne({ 
-      $or: [{ managerId }, { nationalCode }] 
-    });
-    
-    if (existingManager) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'شماره شناسایی یا کد ملی قبلا ثبت شده است' 
-      });
-    }
-    
-    const manager = new Manager({
-      firstName,
-      lastName,
-      managerId,
-      nationalCode,
-      major
-    });
-    
-    await manager.save();
-    
-    res.json({ 
-      success: true, 
-      message: 'ثبت نام با موفقیت انجام شد' 
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
-    });
-  }
-};
-
-// صفحه ورود
-exports.getLogin = (req, res) => {
-  res.render('login');
-};
-
-// ورود دانشجو
-exports.loginStudent = async (req, res) => {
-  try {
-    const { nationalCode, studentNumber } = req.body;
-    
-    const student = await Student.findOne({ nationalCode, studentNumber });
-    
-    if (!student) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'اطلاعات ورود نادرست است' 
-      });
-    }
-    
-    req.session.user = {
-      id: student._id,
-      role: 'student',
-      firstName: student.firstName,
-      lastName: student.lastName,
-      major: student.major
+      password, // به‌صورت خودکار هش می‌شود
+      role,
+      major,
+      isApproved: false // نیاز به تأیید
     };
     
-    res.json({ 
-      success: true, 
-      redirect: '/student/dashboard',
-      user: req.session.user
+    // اضافه کردن فیلدهای اختصاصی بر اساس نقش
+    if (role === 'student' && studentNumber) {
+      userData.studentNumber = studentNumber;
+    } else if (role === 'professor' && professorId) {
+      userData.professorId = professorId;
+    } else if (role === 'head_of_department' && managerId) {
+      userData.managerId = managerId;
+    }
+    
+    const user = await User.create(userData);
+    
+    // ثبت لاگ
+    await logAction('USER_REGISTER', user._id, {
+      details: { role, major },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    
+    return res.status(201).json({
+      success: true,
+      message: 'ثبت‌نام با موفقیت انجام شد. لطفاً منتظر تأیید مدیر سیستم باشید.',
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        nationalCode: user.nationalCode,
+        role: user.role,
+        isApproved: user.isApproved
+      }
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
-    });
-  }
-};
-
-// ورود استاد
-exports.loginProfessor = async (req, res) => {
-  try {
-    const { nationalCode, professorId } = req.body;
+    console.error('خطا در ثبت‌نام:', error);
     
-    const professor = await Professor.findOne({ nationalCode, professorId });
-    
-    if (!professor) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'اطلاعات ورود نادرست است' 
+    // خطای تکراری بودن
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        success: false,
+        message: `${field === 'studentNumber' ? 'شماره دانشجویی' : field === 'professorId' ? 'شماره شناسایی استادی' : field} تکراری است`
       });
     }
     
-    req.session.user = {
-      id: professor._id,
-      role: 'professor',
-      firstName: professor.firstName,
-      lastName: professor.lastName,
-      major: professor.major
-    };
-    
-    res.json({ 
-      success: true, 
-      redirect: '/professor/dashboard',
-      user: req.session.user
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    return res.status(500).json({
+      success: false,
+      message: 'خطای سرور در ثبت‌نام'
     });
   }
-};
+}
 
-// ورود مدیر گروه
-exports.loginManager = async (req, res) => {
+/**
+ * ورود کاربر با JWT
+ * POST /auth/login
+ */
+async function login(req, res) {
   try {
-    const { nationalCode, managerId } = req.body;
+    const { nationalCode, password } = req.body;
     
-    const manager = await Manager.findOne({ nationalCode, managerId });
+    // یافتن کاربر
+    const user = await User.findOne({ nationalCode });
     
-    if (!manager) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'اطلاعات ورود نادرست است' 
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'کد ملی یا رمز عبور اشتباه است'
       });
     }
     
-    req.session.user = {
-      id: manager._id,
-      role: 'manager',
-      firstName: manager.firstName,
-      lastName: manager.lastName,
-      major: manager.major
-    };
+    // بررسی رمز عبور
+    const isMatch = await user.comparePassword(password);
     
-    res.json({ 
-      success: true, 
-      redirect: '/manager/dashboard',
-      user: req.session.user
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'کد ملی یا رمز عبور اشتباه است'
+      });
+    }
+    
+    // بررسی فعال بودن
+    if (!user.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: 'حساب کاربری شما غیرفعال است'
+      });
+    }
+    
+    // بررسی تأیید شدن (به‌جز ادمین)
+    if (!user.isApproved && user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'حساب کاربری شما هنوز تأیید نشده است. لطفاً منتظر بمانید.'
+      });
+    }
+    
+    // تولید JWT Token
+    const token = generateToken(user);
+    
+    // ثبت لاگ
+    await logAction('USER_LOGIN', user._id, {
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    
+    return res.json({
+      success: true,
+      message: 'ورود موفقیت‌آمیز',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        nationalCode: user.nationalCode,
+        role: user.role,
+        major: user.major,
+        isApproved: user.isApproved
+      }
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    console.error('خطا در ورود:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'خطای سرور در ورود'
     });
   }
-};
+}
 
-// خروج
-exports.logout = (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).send('خطا در خروج');
-    }
-    res.redirect('/');
-  });
+/**
+ * دریافت اطلاعات کاربر فعلی
+ * GET /auth/profile
+ */
+async function getProfile(req, res) {
+  try {
+    return res.json({
+      success: true,
+      user: req.user
+    });
+  } catch (error) {
+    console.error('خطا در دریافت پروفایل:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'خطای سرور'
+    });
+  }
+}
+
+module.exports = {
+  register,
+  login,
+  getProfile
 };
