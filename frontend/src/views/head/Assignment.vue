@@ -17,7 +17,7 @@
             :disabled="assigning.supervisors"
           >
             <span v-if="assigning.supervisors">در حال تخصیص استاد راهنما...</span>
-            <span v-else">تخصیص خودکار استاد راهنما</span>
+            <span v-else>تخصیص خودکار استاد راهنما</span>
           </button>
 
           <button

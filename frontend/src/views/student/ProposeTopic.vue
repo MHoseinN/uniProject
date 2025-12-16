@@ -28,7 +28,7 @@
         <div class="flex gap-4">
           <button type="submit" class="btn-primary flex-1" :disabled="loading">
             <span v-if="loading">در حال ارسال...</span>
-            <span v-else">ثبت موضوع</span>
+            <span v-else>ثبت موضوع</span>
           </button>
           <router-link to="/student/dashboard" class="btn-outline flex-1 text-center">
             انصراف

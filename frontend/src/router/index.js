@@ -114,12 +114,12 @@ const router = createRouter({
         {
           path: 'capacity',
           name: 'head-capacity',
-          component: () => import('../views/head/CapacityManagement.vue')
+          component: () => import('../views/head/Capacity.vue')
         },
         {
           path: 'projects',
           name: 'head-projects',
-          component: () => import('../views/head/ProjectsManagement.vue')
+          component: () => import('../views/head/Projects.vue')
         },
         {
           path: 'assignment',
@@ -152,7 +152,7 @@ const router = createRouter({
         {
           path: 'users',
           name: 'admin-users',
-          component: () => import('../views/admin/UsersManagement.vue')
+          component: () => import('../views/admin/Users.vue')
         },
         {
           path: 'logs',

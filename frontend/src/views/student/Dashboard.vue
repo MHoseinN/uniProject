@@ -90,4 +90,33 @@
         </div>
       </div>
     </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import api from '../../services/api'
+import { toPersianDate } from '../../utils/date'
+import { getStatusLabel, getStatusClass } from '../../utils/status'
+
+const student = ref(null)
+const project = ref(null)
+const term = ref(null)
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    const response = await api.get('/student/dashboard')
+    if (response.data.success) {
+      student.value = response.data.student
+      project.value = response.data.project
+      term.value = response.data.term
+    }
+  } catch (error) {
+    console.error('خطا در دریافت داشبورد:', error)
+  } finally {
+    loading.value = false
+  }
+})
+</script>
 
