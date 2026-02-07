@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  direction: rtl;
+  text-align: right;
+}
+
+html,
+body {
+  font-family: 'Vazirmatn', sans-serif;
+  direction: rtl;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  direction: rtl;
+  text-align: right;
+}
+
+#app {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Custom RTL adjustments */
+.flex {
+  direction: ltr;
+  /* Keep flex direction as ltr but content will be RTL */
+}
+
+.flex>* {
+  direction: rtl;
+}
+
+/* Date picker RTL fix */
+input[type="date"],
+input[type="datetime-local"] {
+  direction: ltr;
+  text-align: right;
+}
+
+/* Table RTL fix */
+table {
+  direction: rtl;
+}
+
+th,
+td {
+  text-align: right;
+}
+
+/* Button text alignment */
+button {
+  text-align: center;
+}
+
+/* Form inputs */
+input,
+textarea,
+select {
+  text-align: right;
+  direction: rtl;
+}
+
+input[type="number"] {
+  text-align: center;
+}
