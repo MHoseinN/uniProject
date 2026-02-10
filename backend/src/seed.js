@@ -46,14 +46,14 @@ async function seed() {
   }
   await Product.insertMany(products);
 
-  const adminPassword = await bcrypt.hash('1234567', 10);
+  const adminPassword = await bcrypt.hash('12345', 10);
   await Admin.create({ username: 'admin01', passwordHash: adminPassword, adminId: 1 });
 
-  const userPassword = await bcrypt.hash('m12345', 10);
+  const userPassword = await bcrypt.hash('12345', 10);
   await User.create({
     firstName: 'محمد حسین',
     lastName: 'نعمتیان',
-    nationalId: '0372329888',
+    nationalId: '0372329871',
     phone: '09123456789',
     referrerCode: 'a0dm1n',
     myCode: randomCode(),
